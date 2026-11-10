@@ -1,4 +1,4 @@
-# Concert Ticketing — 콘서트 티켓 예매 웹서비스
+# 콘서트 티켓 예매 웹서비스
 
 > **클라우드컴퓨팅 Ch.10 AWS 프로젝트 적용 과제 | 프로젝트 설계 및 README 초안**  
 > **진행 순서: 로컬 개발 → 로컬 기능·Docker 검증 → GitHub 반영 → AWS EC2 배포 → AWS 배포 주소에서 재검증.** 현재 AWS는 미배포 상태이며, 주소·시험 결과·제출 커밋은 직접 확인한 후 기입합니다.
@@ -81,9 +81,7 @@ Week10_Workout/
 │   └── services/
 │       ├── booking.js         # 예매 검증·트랜잭션 로직
 │       └── queue.js           # 활성 입장·순서·만료 처리
-├── data/                      # SQLite 파일 (Git 추적 제외)
-└── docs/
-    └── screenshots/           # 제출용 화면 캡처(선택)
+└── data/                      # SQLite 파일 (Git 추적 제외)
 ```
 
 위 구조는 **개발 목표**이며, 실제 구현 후 파일과 명령을 맞춰 갱신합니다. `data/`, `.env` 및 DB 파일은 Git 추적에서 제외하고, 설정 예시는 `.env.example`로 제공합니다.
