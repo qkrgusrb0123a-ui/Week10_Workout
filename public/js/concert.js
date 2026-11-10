@@ -3,10 +3,23 @@ const seatMap = $('#seats');
 const bookingForm = $('#booking');
 const bookButton = $('#book-button');
 const result = $('#result');
+const securityDialog = $('#security-dialog');
+const securityForm = $('#security-form');
+const securityImage = $('#security-image');
+const securityInput = $('#security-code');
+const securityNotice = $('#security-notice');
+const securityRefresh = $('#security-refresh');
+const securityCancel = $('#security-cancel');
+const securityConfirm = $('#security-confirm');
+const completionDialog = $('#completion-dialog');
+const completionCode = $('#completion-code');
+const copyNotice = $('#copy-notice');
 let seats = [];
 let selected = null;
 let ticketId = null;
-let booking = false;
+let busy = false;
+let pendingBooking = null;
+let challengeId = null;
 
 function normalizeSeats(data) {
   const direct = list(data, 'seats');
@@ -20,12 +33,12 @@ function normalizeSeats(data) {
 
 function updateSelection() {
   $('#selected').textContent = selected ?? '좌석을 선택해 주세요';
-  bookButton.disabled = booking || !ticketId || !selected;
+  bookButton.disabled = busy || !ticketId || !selected;
   for (const button of seatMap.querySelectorAll('button')) {
     const active = button.dataset.seatId === selected;
     button.classList.toggle('selected', active);
     button.setAttribute('aria-pressed', String(active));
-    button.disabled = booking || !ticketId || button.classList.contains('booked');
+    button.disabled = busy || !ticketId || button.classList.contains('booked');
   }
 }
 
@@ -76,6 +89,12 @@ function setAdmission(token) {
   updateSelection();
 }
 
+function clearAdmission() {
+  sessionStorage.removeItem(ticketKey(concertId));
+  selected = null;
+  setAdmission(null);
+}
+
 async function loadConcert() {
   const notice = $('#notice');
   if (!concertId) {
@@ -87,13 +106,16 @@ async function loadConcert() {
     const data = await API.concert(concertId);
     const concert = concertInfo(data);
     const title = concert.title ?? concert.name ?? '공연 상세';
+    const venue = concertVenue(concert.venue ?? concert.location);
+    $('#concert-poster').src = concert.posterUrl ?? '/images/concert-poster01.jpg';
     $('#concert-title').textContent = title;
     $('#concert-date').textContent = concertDate(concert);
-    $('#concert-venue').textContent = concert.venue ?? concert.location ?? '장소 미정';
+    $('#concert-venue').textContent = venue;
+    if (/^STAGE 0[1-3]$/.test(venue)) $('#stage').textContent = venue;
     $('#description').textContent = concert.description ?? '';
     $('#description').hidden = !concert.description;
     $('#join').href = '/waiting.html?concertId=' + encodeURIComponent(concertId);
-    document.title = title + ' | ENCORE';
+    document.title = title + ' | Concert Ticketing';
     seats = normalizeSeats(data);
     renderSeats();
     $('#detail').hidden = false;
@@ -117,29 +139,75 @@ async function loadConcert() {
   }
 }
 
-bookingForm.addEventListener('submit', async (event) => {
+function setSecurityBusy(value) {
+  busy = value;
+  securityInput.disabled = value || !challengeId;
+  securityConfirm.disabled = securityInput.disabled;
+  securityRefresh.disabled = value;
+  securityCancel.disabled = value;
+  updateSelection();
+}
+
+async function loadChallenge(message) {
+  challengeId = null;
+  securityImage.hidden = true;
+  securityImage.removeAttribute('src');
+  securityInput.value = '';
+  setSecurityBusy(true);
+  showNotice(securityNotice, '보안문자를 불러오고 있습니다.');
+  try {
+    const challenge = await API.bookingChallenge(pendingBooking);
+    challengeId = challenge.challengeId;
+    securityImage.src = challenge.image;
+    securityImage.hidden = false;
+    showNotice(securityNotice, message, message ? 'error' : '');
+  } catch (error) {
+    if ([401, 403, 410].includes(error.status)) {
+      securityDialog.close();
+      clearAdmission();
+      showNotice(result, error.message, 'error');
+    } else {
+      showNotice(securityNotice, error.message, 'error');
+    }
+  } finally {
+    setSecurityBusy(false);
+    if (challengeId && securityDialog.open) securityInput.focus();
+  }
+}
+
+bookingForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  if (booking || !selected || !ticketId) return;
+  if (busy || securityDialog.open || !selected || !ticketId) return;
   const nicknameInput = $('#nickname');
   const nickname = nicknameInput.value.trim();
   if (!nickname) {
-    showNotice(result, '닉네임을 입력해 주세요.', 'error');
+    showNotice(result, '성명을 입력해 주세요.', 'error');
     nicknameInput.focus();
     return;
   }
 
-  const seatId = selected;
-  booking = true;
-  updateSelection();
-  showNotice(result, '예매 요청을 처리하고 있습니다.');
+  pendingBooking = { concertId, seatId: selected, nickname, queueTicketId: ticketId };
+  showNotice(result);
+  securityDialog.showModal();
+  loadChallenge();
+});
+
+securityRefresh.addEventListener('click', () => loadChallenge());
+securityCancel.addEventListener('click', () => securityDialog.close());
+securityDialog.addEventListener('cancel', (event) => {
+  if (busy) event.preventDefault();
+});
+
+securityForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (busy || !challengeId) return;
+  const { seatId } = pendingBooking;
+  const securityCode = securityInput.value.trim();
+  setSecurityBusy(true);
+  showNotice(securityNotice, '보안문자를 확인하고 있습니다.');
   try {
-    const data = await API.book({
-      concertId: Number(concertId) || concertId,
-      seatId,
-      nickname,
-      queueTicketId: ticketId,
-      ticketId
-    });
+    const data = await API.book({ ...pendingBooking, challengeId, securityCode });
+    securityDialog.close();
     const reservation = reservationInfo(data);
     const code = reservation.code ?? reservation.reservationCode ?? data.code ?? data.reservationCode;
     seats.find((seat) => seat.id === seatId).taken = true;
@@ -151,15 +219,22 @@ bookingForm.addEventListener('submit', async (event) => {
       link.href = '/reservation.html?code=' + encodeURIComponent(code);
       link.textContent = '예매 내역 확인 →';
       result.append(link);
+      completionCode.textContent = code;
+      $('#completion-link').href = link.href;
+      showNotice(copyNotice);
+      completionDialog.showModal();
     } else {
       showNotice(result, '예매 요청은 처리됐으나 서버 응답에 예매번호가 없습니다.');
     }
   } catch (error) {
+    if (error.status === 422) {
+      await loadChallenge(error.message);
+      return;
+    }
+    securityDialog.close();
     showNotice(result, error.message, 'error');
     if ([401, 403, 410].includes(error.status)) {
-      sessionStorage.removeItem(ticketKey(concertId));
-      selected = null;
-      setAdmission(null);
+      clearAdmission();
     } else if (error.status === 409) {
       try {
         seats = normalizeSeats(await API.concert(concertId));
@@ -169,8 +244,27 @@ bookingForm.addEventListener('submit', async (event) => {
       }
     }
   } finally {
-    booking = false;
+    setSecurityBusy(false);
     renderSeats();
+  }
+});
+
+$('#copy-code').addEventListener('click', async () => {
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(completionCode.textContent);
+    } else {
+      const range = document.createRange();
+      range.selectNodeContents(completionCode);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      if (!document.execCommand('copy')) throw new Error();
+      selection.removeAllRanges();
+    }
+    showNotice(copyNotice, '예매번호를 복사했습니다.', 'success');
+  } catch {
+    showNotice(copyNotice, '복사할 수 없습니다. 예매번호를 직접 선택해 복사해 주세요.', 'error');
   }
 });
 

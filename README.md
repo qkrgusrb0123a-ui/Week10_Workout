@@ -1,7 +1,7 @@
 # Concert Ticketing - 콘서트 티켓 예매 웹서비스
 
-> **클라우드컴퓨팅 Ch.10 AWS 프로젝트 적용 과제 | 프로젝트 설계 및 README 초안**  
-> **진행 순서: 로컬 개발 → 로컬 기능·Docker 검증 → GitHub 반영 → AWS EC2 배포 → AWS 배포 주소에서 재검증.** 현재 AWS는 미배포 상태입니다. SSH 개인 키 파일 권한 수정까지만 확인했으며, SSH 로그인·배포 주소·시험 결과·제출 커밋은 실제 검증 후 기입합니다.
+> **클라우드컴퓨팅 Ch.10 AWS 프로젝트 적용 과제**  
+> **진행 순서: 로컬 개발 → 로컬 기능·Docker 검증 → GitHub 반영 → AWS EC2 배포 → AWS 배포 주소에서 재검증.**
 
 ## 1. 서비스 소개
 
@@ -16,7 +16,7 @@
 | 번호 | 사용자 기능 | 화면에서의 실행 방법 | 기대 결과 |
 |---|---|---|---|
 | 1 | 공연 목록 및 상세 조회 | 공연 카드 선택 | 공연 정보, 공연 날짜, 예매 가능 좌석 표시 |
-| 2 | 좌석 선택 및 예매 | 빈 좌석 선택 → 닉네임 입력 → 예매 버튼 클릭 | 예매번호 발급 및 해당 좌석 예약 처리 |
+| 2 | 좌석 선택 및 예매 | 빈 좌석 선택 → 닉네임 입력 → 예매 버튼 클릭 → 보안문자 입력 | 예매번호 발급 및 해당 좌석 예약 처리 |
 | 3 | 예매 내역 조회 | 예매번호 입력 → 조회 버튼 클릭 | 예약한 공연·좌석·상태 표시 |
 | 4 | 예매 취소 | 예매번호 조회 → 취소 버튼 클릭 | 예약 취소 및 좌석 재오픈 |
 | 5 | 예매 입장 대기열 | 예매 가능 인원이 가득 찬 상태에서 예매하기 선택 | 대기번호 표시, 순서가 되면 예매 화면 입장 |
@@ -34,6 +34,16 @@
 - 프런트엔드의 좌석 표시 상태는 참고용이며, 실제 예매 승인 여부는 API 응답으로 결정합니다.
 - 본 과제는 모의 예매 시스템이며, 실제 결제 기능은 포함하지 않습니다.
 
+### 샘플 공연
+
+공연일은 2026년 12월 20일이며 시간은 한국 시간(UTC+9) 기준입니다.
+
+| 공연 | 무대 | 시간 | 좌석 |
+| --- | --- | --- | ---: |
+| 샘플 콘서트 01 · 기타리스트 | 스테이지 1 | 14:00 | 5 |
+| 샘플 콘서트 02 · 밴드 | 스테이지 2 | 17:00 | 15 |
+| 샘플 콘서트 03 · 여성 보컬 | 스테이지 3 | 18:30 | 30 |
+
 ## 2. 사용 기술
 
 | 분류 | 기술 | 사용 목적 |
@@ -41,82 +51,103 @@
 | 프런트엔드 | HTML5, CSS3, Vanilla JavaScript | 페이지·스타일·사용자 동작·Fetch API 요청 |
 | 백엔드 | Node.js, Express | REST API, 예매·취소 처리, 정적 페이지 제공 |
 | 데이터베이스 | SQLite (`better-sqlite3`) | 공연·좌석·예매 데이터 저장, 트랜잭션 처리 |
-| 버전 관리 | Git, GitHub (Public) | 소스 코드 및 README 보존 |
+| 버전 관리 | Git, GitHub (Public) | 소스 코드 보존 |
 | 배포 | AWS EC2 (Ubuntu) | 웹 서버 운영 및 외부 접속 |
 | 실행 관리 | Docker, Docker Compose | 로컬 및 EC2에서 동일한 실행 방식 유지 |
 
 > **선택 근거:** HTML·CSS·JavaScript로 사용자 인터페이스를 만들고, 서버에서도 JavaScript(Node.js)를 활용해 학습 부담을 줄입니다. 좌석 점유·취소 데이터를 브라우저별로 공유해야 하므로 정적 페이지뿐 아니라 API와 데이터베이스가 필요합니다. SQLite는 과제용 단일 EC2 구성에 적합합니다. 향후 다중 인스턴스로 확장한다면 공유형 RDS(PostgreSQL 등)로 전환해야 합니다.
 
-## 3. 프로젝트 구조 (예정)
+## 3. 프로젝트 구조
 
 ```text
 Week10_Workout/
-├── README.md                  # 프로젝트 안내 및 검증 기록
+├── README.md                       # 프로젝트 안내
 ├── .gitignore
-├── .env.example               # 설정값 예시 (실제 비밀정보 제외)
-├── Dockerfile                 # Node.js 실행 이미지
-├── compose.yaml               # 앱 및 영속 볼륨 설정
-├── package.json               # 실행 명령 및 의존성
+├── .dockerignore
+├── .env.example                    # 환경변수 값 예시
+├── Dockerfile                      # 백엔드 실행 이미지
+├── compose.yaml                    # 앱 및 영속 볼륨 설정
+├── package.json                    # 실행 명령 및 의존성
 ├── package-lock.json
-├── public/                    # HTML / CSS / JavaScript 프런트엔드
-│   ├── index.html             # 공연 목록
-│   ├── concert.html           # 공연 상세 및 좌석 선택
-│   ├── reservation.html       # 예매 내역 조회 및 취소
-│   ├── waiting.html           # 입장 대기
+├── public/                         # HTML / CSS / JavaScript 프런트엔드
+│   ├── index.html                  # 공연 목록
+│   ├── concert.html                # 공연 상세 및 좌석 선택
+│   ├── reservation.html            # 예매 내역 조회 및 취소
+│   ├── waiting.html                # 입장 대기
 │   ├── css/
-│   │   └── style.css          # 공통 스타일
+│   │   └── style.css               # 공통 스타일
 │   ├── images/
-│   │   ├── concert-hero.jpg   # 배너 이미지
-│   │   └── concert-poster.jpg # 포스터 이미지
+│   │   ├── concert-hero.jpg        # 배너 이미지
+│   │   ├── concert-poster01.jpg    # 포스터 이미지01
+│   │   ├── concert-poster02.jpg    # 포스터 이미지02
+│   │   └── concert-poster03.jpg    # 포스터 이미지03
 │   └── js/
-│       ├── api.js             # Fetch API 공통 요청
-│       ├── index.js           # 공연 목록 로딩
-│       ├── concert.js         # 좌석 표시·예매 요청
-│       ├── reservation.js     # 예매 조회·취소
-│       └── waiting.js         # 대기번호·상태 갱신
+│       ├── api.js                  # Fetch API 공통 요청
+│       ├── index.js                # 공연 목록 로딩
+│       ├── concert.js              # 좌석 표시·예매 요청
+│       ├── reservation.js          # 예매 조회·취소
+│       └── waiting.js              # 대기번호·상태 갱신
 ├── server/
-│   ├── app.js                 # Express 앱 진입점, 정적 파일 서빙
-│   ├── db.js                  # SQLite 연결 및 초기 데이터
+│   ├── app.js                      # Express 앱 진입점, 정적 파일 서빙
+│   ├── db.js                       # SQLite 연결 및 초기 데이터
 │   ├── routes/
-│   │   ├── concerts.js        # 공연·좌석 조회 API
-│   │   ├── reservations.js    # 예매·조회·취소 API
-│   │   └── queue.js           # 대기열 입장·상태 API
+│   │   ├── concerts.js             # 공연·좌석 조회 API
+│   │   ├── reservations.js         # 예매·조회·취소 API
+│   │   └── queue.js                # 대기열 입장·상태 API
 │   └── services/
-│       ├── booking.js         # 예매 검증·트랜잭션 로직
-│       └── queue.js           # 활성 입장·순서·만료 처리
-└── data/                      # SQLite 파일 (Git 추적 제외)
+│       ├── booking.js              # 6자리 보안문자 발급·검증
+│       └── queue.js                # 활성 입장·순서·만료 처리
+└── data/                           # SQLite 파일 (Git 추적 제외)
 ```
 
-위 구조는 **개발 목표**이며, 실제 구현 후 파일과 명령을 맞춰 갱신합니다. `data/`, `.env` 및 DB 파일은 Git 추적에서 제외하고, 설정 예시는 `.env.example`로 제공합니다.
+## 4. AWS 배포 구성 및 환경
 
-## 4. AWS 배포 구성 및 환경 (예정)
-
-기존에 사용하던 **AWS EC2 인스턴스 1대**를 재사용합니다. 현재는 SSH 개인 키의 Windows 파일 권한 수정까지 확인했으며, **SSH 로그인·포트 점검·애플리케이션 배포는 아직 검증하지 않았습니다.**
+기존에 사용하던 **AWS EC2 인스턴스 1대**를 재사용합니다.
 
 ```mermaid
-flowchart TD
-    U["사용자 브라우저"]
-    U -->|"HTTP :8080 (예정)"| SG["EC2 보안 그룹 / 인바운드 규칙"]
-    subgraph EC2["기존 AWS EC2 / Ubuntu (운영체제 확인 예정)"]
-        SG -->|"호스트 :8080 → 컨테이너 :3000"| APP["Docker Compose / Express :3000"]
-        APP <--> DB[("SQLite / 영속 데이터")]
-    end
+flowchart LR
+  Browser["브라우저"] --> SG["EC2 보안 그룹 · TCP 80"]
+  SG --> App["Docker Compose · Express :3000"]
+  App --> Data["SQLite · concert-data 볼륨"]
 ```
 
-**요청 및 응답 경로:** 브라우저 → EC2 퍼블릭 IP와 보안 그룹(예정 포트 `8080`) → Docker 포트 매핑 → Express(`3000`) → SQLite → API 응답. 실제 포트는 기존 서비스와의 충돌 여부 및 `compose.yaml` 설정 확인 후 확정합니다.
+1. EC2 콘솔에서 인스턴스의 현재 퍼블릭 IPv4를 확인합니다. 보안 그룹에서 관리자 IP의 SSH `22/tcp`와 시연에 필요한 웹 포트 `80/tcp`를 허용합니다.
+2. Windows PowerShell에서 OpenSSH로 접속합니다. `EC2_PUBLIC_IP`는 확인한 주소로 바꿉니다. PuTTY를 쓰는 경우 기존 PEM을 PuTTYgen에서 PPK로 변환해 같은 주소에 접속할 수 있습니다. [AWS SSH 안내](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html) · [AWS PuTTY 안내](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-from-windows.html)
+
+```powershell
+ssh -i "C:\ec2\student-key.pem" ubuntu@EC2_PUBLIC_IP
+```
+
+3. EC2에서 Docker Compose 버전과 포트 점유를 확인하고, GitHub에 반영한 코드를 빌드합니다. 80번 포트가 사용 중이면 `compose.yaml`의 호스트 포트와 보안 그룹의 웹 포트를 동일한 빈 포트로 맞춥니다.
+
+```bash
+docker compose version
+sudo ss -lntp
+git clone https://github.com/qkrgusrb0123a-ui/Week10_Workout.git
+cd Week10_Workout
+docker compose up -d --build
+docker compose ps
+curl -i http://localhost/api/health
+```
+
+4. 호스트 포트를 변경했다면 상태 확인 URL에도 그 포트를 붙입니다. 집 PC의 브라우저에서 EC2 퍼블릭 IPv4와 웹 포트로 접속해 아래 항목을 확인합니다. PEM 파일과 SQLite 데이터는 저장소 밖에 보관합니다.
+
+단일 EC2 구성에서는 ALB와 Auto Scaling을 적용하지 않습니다. 다중 서버로 확장할 경우 ALB를 통한 분산, 공용 DB, 공유 대기열 저장소를 함께 검토합니다.
+
+기본 포트 매핑은 `80:3000`입니다. 브라우저 요청은 EC2의 `80/tcp`로 들어와 Docker를 통해 컨테이너의 Express `3000/tcp`로 전달됩니다.
 
 | 항목 | 설정 및 상태 |
 |---|---|
 | AWS 서비스 | 기존 EC2 인스턴스 재사용 |
-| 운영체제 | Ubuntu 사용 예정 (SSH 접속 후 확인) |
-| 현재 확인에 사용한 퍼블릭 IP | `15.134.217.132` (변경 가능) |
+| 운영체제 | Ubuntu 사용 |
+| 현재 확인에 사용한 퍼블릭 IP | `EC2_PUBLIC_IP` |
 | SSH 사용자 | `ubuntu` |
 | SSH 인증 | 기존 PEM 개인 키 사용 |
-| 배포 및 실행 | GitHub + Docker Compose (예정) |
-| 외부 웹 포트 | `8080/tcp` (예정, 미확정) |
-| 컨테이너 내부 포트 | `3000/tcp` (예정) |
-| 데이터베이스 | SQLite, 영속 저장 경로 구성 예정 |
-| 공개 접속 주소 | `http://15.134.217.132:8080` (예시, 아직 미배포) |
+| 배포 및 실행 | GitHub + Docker Compose |
+| 외부 웹 포트 | 기본 `80/tcp` (`compose.yaml`의 `80:3000`) |
+| 컨테이너 내부 포트 | `3000/tcp` |
+| 데이터베이스 | SQLite, 영속 저장 경로 구성 |
+| 공개 접속 주소 형식 | `http://EC2_PUBLIC_IP` (기본 포트) |
 
 | 구성 요소 | 역할 | 선택 이유 |
 |---|---|---|
@@ -128,7 +159,7 @@ flowchart TD
 
 ELB(ALB)와 Auto Scaling의 미적용 근거 및 향후 확장 계획은 [8. ELB 및 Auto Scaling 확장 검토](#8-elb-및-auto-scaling-확장-검토)에 정리했습니다.
 
-## 5. 실행·연결·배포 방법 (구현 및 검증 예정)
+## 5. 실행·연결·배포 방법
 
 ### 5.1 준비 사항
 
@@ -137,7 +168,7 @@ ELB(ALB)와 Auto Scaling의 미적용 근거 및 향후 확장 계획은 [8. ELB
 - Docker Engine 및 Docker Compose (컨테이너 실행 시)
 - 기존 EC2 접근용 SSH 개인 키 (`.pem` 파일)
 
-> 명령 및 포트는 설계에 따른 **예정값**입니다. 실제 소스 파일과 서버 구성을 확인한 뒤 확정해야 합니다. PEM 파일 자체나 비밀정보는 GitHub에 업로드하지 않습니다.
+> 명령 및 포트는 설계에 따른 **예정값**입니다. 실제 소스 파일과 서버 구성을 확인한 뒤 확정해야 합니다.
 
 ### 5.2 로컬 실행 및 점검
 
@@ -175,46 +206,21 @@ docker compose ps
 Windows PowerShell에서 기존 PEM 개인 키를 사용합니다.
 
 ```powershell
-ssh -i "C:\ec2\student-key.pem" ubuntu@15.134.217.132
+ssh -i "C:\ec2\student-key.pem" ubuntu@EC2_PUBLIC_IP
 ```
-
-초기 시도에서 `Permission denied (publickey)`가 발생했고, 키 파일의 접근 권한이 너무 넓다는 오류(`UNPROTECTED PRIVATE KEY FILE`)를 확인했습니다. 다음 명령으로 상속 권한을 제거하고 현재 Windows 사용자에게 읽기 권한을 부여했습니다.
-
-```powershell
-icacls "C:\ec2\student-key.pem" /inheritance:r
-icacls "C:\ec2\student-key.pem" /grant:r "${env:USERNAME}:(R)"
-icacls "C:\ec2\student-key.pem"
-```
-
-**확인된 결과:** `icacls` 출력에 현재 사용자에 대한 `(R)` 권한만 표시됨. **미확인:** 해당 키로 EC2 SSH 로그인에 성공했는지 여부.
-
-### 5.4 기존 서버 환경 및 포트 점검 (예정)
 
 SSH 로그인에 성공한 뒤 EC2 내부에서 실행합니다.
 
-```bash
-cat /etc/os-release
-git --version
-docker --version
-docker compose version
-sudo docker ps
-sudo ss -lntp
-```
-
-기존 컨테이너와 사용 중인 포트를 확인하여 새 서비스의 웹 포트를 확정합니다. `8080`이 이미 사용 중이면 다른 미사용 포트를 선택하고 Compose 포트 매핑과 보안 그룹 규칙을 함께 수정합니다.
-
-### 5.5 GitHub 소스 내려받기 (예정)
+### 5.4 GitHub 소스 내려받기
 
 ```bash
-mkdir -p ~/projects
-cd ~/projects
 git clone https://github.com/qkrgusrb0123a-ui/Week10_Workout.git
 cd Week10_Workout
 ```
 
 저장소에 `Dockerfile`, `compose.yaml`, 애플리케이션 소스가 실제로 존재하는지 확인합니다. 기존 프로젝트의 컨테이너나 데이터는 건드리지 않습니다.
 
-### 5.6 Docker Compose 실행 (예정)
+### 5.5 Docker Compose 실행
 
 ```bash
 sudo docker compose config
@@ -223,50 +229,86 @@ sudo docker compose ps
 sudo docker compose logs --tail=100
 ```
 
-예정 포트가 `8080:3000`으로 확정되었다면 EC2 내부에서 아래 경로를 확인합니다.
+기본 매핑 `80:3000`에서 EC2 내부의 상태 API를 확인합니다.
 
 ```bash
-curl -i http://localhost:8080/api/health
+curl -i http://localhost/api/health
 ```
 
-그 다음 보안 그룹의 웹 포트 접근 허용을 확인하고, 외부 브라우저에서 `http://15.134.217.132:8080`에 접속합니다. **해당 주소는 아직 정상 접속을 확인한 배포 주소가 아닙니다.**
+정상 응답은 `200 OK`와 `{"status":"ok","database":"connected"}`입니다. 보안 그룹에서 `80/tcp`를 허용한 뒤 외부 브라우저에서 `http://EC2_PUBLIC_IP`에 접속합니다.
 
-### 5.7 이후 코드 변경 반영 (배포 완료 후)
+EC2의 80번 포트가 이미 사용 중이면 빈 호스트 포트로 바꿉니다. 예를 들어 `compose.yaml`을 `8080:3000`으로 변경하면 보안 그룹에도 `8080/tcp`를 허용하고, `http://localhost:8080/api/health`와 `http://EC2_PUBLIC_IP:8080`으로 확인합니다.
+
+### 5.6 이후 코드 변경 반영
 
 ```bash
-cd ~/projects/Week10_Workout
 git pull origin main
 sudo docker compose up -d --build
 sudo docker compose ps
 ```
 
-실제 배포 후에는 공인 IP·외부 포트·검증 일시·Git 커밋 해시를 README에 기록합니다. 검사 완료 시까지 배포 상태를 유지합니다.
+### 5.7 Docker Compose 종료
 
-## 6. API 설계 (예정)
+```bash
+docker compose down
+```
+
+Docker 종료 이후 실행중인 인스턴스의 상태를 중지 혹은 종료(삭제)를 하여 추가 비용이 발생하지 않도록 합니다.
+
+## 6. API 설계
 
 | Method | 경로 | 동작 | 주요 응답 |
 |---|---|---|---|
-| GET | `/api/health` | 서버 상태 확인 | `200 OK` |
-| GET | `/api/concerts` | 공연 목록 조회 | 공연 배열 |
-| GET | `/api/concerts/:id` | 공연 상세 및 좌석 조회 | 공연 및 좌석 상태 |
-| POST | `/api/reservations` | 좌석 예매 | `201 Created` / `409 Conflict` |
+| GET | `/api/health` | 서버의 SQLite 연결 확인 | `200 OK` / `503 Service Unavailable` |
+| GET | `/api/concerts` | 공연 목록 조회 | `200 OK`, 공연 배열 |
+| GET | `/api/concerts/:id` | 공연 상세 및 좌석 조회 | `200 OK` / `400 Bad Request` / `404 Not Found` |
+| POST | `/api/queue/join` | 공연별 예매 화면 입장 요청 | `200 OK`, `ticketId`, `status`, `position`, `expiresAt` |
+| GET | `/api/queue/:ticketId` | 입장 상태와 대기 순번 조회 | `200 OK` / `404 Not Found` (없거나 만료된 대기권) |
+| POST | `/api/queue/:ticketId/leave` | 예매 화면 퇴장 또는 대기 취소 | `200 OK`, `{"status":"cancelled"}` |
+| POST | `/api/reservations/challenge` | 입장권 확인 후 보안문자 발급 | `200 OK`, `challengeId`와 `image` |
+| POST | `/api/reservations` | 입장권과 보안문자 확인 후 좌석 예매 | `201 Created` / `409 Conflict` (이미 예매된 좌석) / `422 Unprocessable Content` (보안문자 검증 실패) |
 | GET | `/api/reservations/:code` | 예매번호로 내역 조회 | `200 OK` / `404 Not Found` |
 | DELETE | `/api/reservations/:code` | 예매 취소 | `200 OK` / `404 Not Found` / `409 Conflict` |
-| POST | `/api/queue/join` | 예매 화면 입장 요청 | 입장 토큰 또는 대기번호 |
-| GET | `/api/queue/:ticketId` | 대기 상태·순서 확인 | 대기 / 입장 가능 / 만료 |
-| POST | `/api/queue/:ticketId/leave` | 입장 종료·대기 취소 | 종료 결과 |
 
-**예매 요청 예시**
+보안문자 발급과 예매 모두 입장 권한이 필요합니다. 입장권이 누락됐거나 해당 공연에 입장한 상태가 아니면 `403 Forbidden`, 대기권이 없거나 만료됐으면 `410 Gone`이 반환됩니다.
 
-```json
-{
-  "concertId": 1,
-  "seatId": "A-01",
-  "nickname": "guest01"
-}
-```
+### 예매 요청 예시
 
-실제 API와 응답 구조는 구현 과정에서 확정합니다. 대기열 토큰은 예매 승인 시에도 서버에서 검증하며, 활성 입장 수 제한·토큰 만료·연결 종료 시 슬롯 반환을 구현합니다. 단일 서버 과제이므로 대기열 상태는 **서버 메모리**에 둘 수 있지만 서버 재시작 시 초기화됨을 문서화하고, 필요하면 SQLite에 저장합니다. 개인정보 노출을 줄이기 위해 **모의 닉네임·무작위 예매번호**를 사용하며, 실제 서비스 수준의 인증을 제공하지 않습니다.
+공연 목록에서 공연 ID를, 공연 상세에서 빈 좌석 ID를 확인합니다. 아래 POST 요청은 `Content-Type: application/json`으로 보냅니다.
+
+1. `POST /api/queue/join`에 공연 ID를 보냅니다. 응답의 `status`가 `waiting`이면 `GET /api/queue/:ticketId`로 조회해 `admitted`가 될 때까지 기다립니다.
+
+   ```json
+   {
+     "concertId": 1
+   }
+   ```
+
+2. `POST /api/reservations/challenge`에 입장한 대기권의 `ticketId`를 `queueTicketId`로 보냅니다. 응답의 `image`에 표시된 6자리 숫자를 읽고 `challengeId`를 보관합니다.
+
+   ```json
+   {
+     "concertId": 1,
+     "seatId": "A-01",
+     "nickname": "guest01",
+     "queueTicketId": "<대기권의 ticketId>"
+   }
+   ```
+
+3. `POST /api/reservations`에 같은 공연·좌석·닉네임·입장권과 `challengeId`, `securityCode`를 보냅니다. `012345`는 입력 형식 예시이며, 실제로는 이미지에 표시된 숫자를 문자열로 보냅니다. 성공 응답의 `code`가 예매번호입니다.
+
+   ```json
+   {
+     "concertId": 1,
+     "seatId": "A-01",
+     "nickname": "guest01",
+     "queueTicketId": "<대기권의 ticketId>",
+     "challengeId": "<보안문자 발급 응답의 challengeId>",
+     "securityCode": "012345"
+   }
+   ```
+
+대기열은 서버 메모리에 저장됩니다. 입장 슬롯은 명시적 퇴장이나 입장권 만료 시 반환되며, 서버를 재시작하면 대기열과 보안문자가 초기화됩니다. 예매 조회와 취소에는 무작위로 발급한 예매번호를 사용합니다.
 
 ## 7. 기능별 시험 계획 및 직접 검증 기록
 
@@ -284,8 +326,8 @@ sudo docker compose ps
 | 예매 취소 | 경계 | 이미 취소한 예매번호 재취소 | 중복 취소 방지 안내 | 미실행 | 미판정 |
 | 입장 대기 | 정상 | 활성 입장 인원 제한 미만에서 예매하기 클릭 | 예매 화면 입장 허용 | 미실행 | 미판정 |
 | 입장 대기 | 경계 | 활성 입장 인원 제한을 채운 뒤 다른 브라우저로 예매하기 클릭 | 대기번호 표시 및 예매 화면 입장 제한 | 미실행 | 미판정 |
-| 입장 대기 | 정상(추가) | 활성 사용자가 퇴장한 뒤 대기 순서 도달 | 다음 대기자에게 입장 권한 부여 | 미실행 | 미판정 |
-| 입장 대기 | 실패(추가) | 만료되거나 유효하지 않은 토큰으로 예매 요청 | 서버가 입장/예매 요청 거절 | 미실행 | 미판정 |
+| 입장 대기 | 정상 | 활성 사용자가 퇴장한 뒤 대기 순서 도달 | 다음 대기자에게 입장 권한 부여 | 미실행 | 미판정 |
+| 입장 대기 | 실패 | 만료되거나 유효하지 않은 토큰으로 예매 요청 | 서버가 입장/예매 요청 거절 | 미실행 | 미판정 |
 
 > 로컬 시험 결과는 개발 기록으로 별도 보관하고, **최종 제출용 검사는 AWS 배포 주소에서** 직접 수행합니다. 실제 결과에는 화면 상태 또는 HTTP 응답·기록 시각 등 실제로 확인한 내용을 기입합니다. 대기열 시험을 위한 활성 입장 제한 인원은 로컬에서 낮게 설정해 재현 가능하도록 합니다.
 
@@ -302,7 +344,7 @@ sudo docker compose ps
 
 ## 9. AI 활용 기록 및 직접 구현 확인
 
-과제 규정에 따라 **일반 AI를 이용한 개념 질문, 구조 설계, 코드 설명 및 검토**는 허용되지만 **Codex, Cursor, Claude Code, Google Antigravity 등 에이전틱 코딩 도구는 사용하지 않습니다.**
+과제 규정에 따라 **일반 AI를 이용한 개념 질문, 구조 설계, 코드 설명 및 검토**는 허용되지만 **Codex, Cursor, Claude Code, Google Antigravity 등 에이전틱 코딩 도구를 이용한 직접적인 코드 작성 작업에는 사용하지 않습니다.**
 
 | 항목 | 기록 |
 |---|---|
@@ -314,41 +356,9 @@ sudo docker compose ps
 
 > 소스 코드의 실제 구현 및 실행 검증은 과제의 AI 사용 제한을 준수하여 직접 진행합니다.
 
-## 10. 제출 전 확인 사항
-
-- [x] GitHub 원격 저장소 생성 및 **Public** 설정 확인
-- [ ] 수정된 README와 실제 소스 파일 GitHub에 업로드
-- [ ] 사용자 기능 3개 이상 구현 및 브라우저에서 시연
-- [ ] 모든 기능 및 Docker 로컬 검증 완료
-- [ ] AWS 서비스 1개 이상 사용해 실제 배포
-- [ ] 배포 주소에서 기능별 정상 1건 + 실패/경계 1건 검증
-- [ ] 배포 주소, GitHub 링크, 제출 커밋 해시 기록
-- [ ] 주소창과 메인 화면이 함께 보이는 배포 스크린샷 확보
-- [ ] 제공된 제출 양식에 **스크린샷 3장** 및 기능 시험 결과 반영
-- [x] AI 사용 여부·범위·현재까지 직접 확인한 결과 기록 (향후 변경 시 갱신)
-- [ ] 검사 완료까지 AWS 배포 유지
-- [ ] PDF 파일명 **`학번_이름.pdf`**로 제출, 기한 엄수
-- [ ] 검사 후 불필요한 AWS 자원 정리, GitHub 저장소와 README 보존
-
-
-### AWS EC2 연결 진행 상태
-
-- [x] 기존 AWS EC2 인스턴스 재사용 결정
-- [x] EC2 퍼블릭 IPv4 주소 확인
-- [x] 기존 PEM 개인 키 파일 확보
-- [x] Windows PEM 파일 접근 권한 수정
-- [ ] AWS EC2 SSH 로그인 성공 확인
-- [ ] EC2 Docker 및 Docker Compose 환경 확인
-- [ ] 기존 컨테이너와 포트 충돌 검사
-- [ ] GitHub 프로젝트 다운로드
-- [ ] Docker Compose 실행
-- [ ] AWS 배포 주소 접속 확인
-- [ ] 사용자 기능 정상 및 실패 시험 완료
-
-
 ---
 
 **저장소:** https://github.com/qkrgusrb0123a-ui/Week10_Workout  
-**AWS 주소:** 미배포 (예정 주소: `http://15.134.217.132:8080`, 확인 전)
+**AWS 주소** — 배포 후 외부 접속을 확인한 URL을 기록합니다.
 
 **참고:** 강의자료 *클라우드 컴퓨팅 Ch.10 AWS 프로젝트 적용* (서비스 구현, AWS 배포, 검증, README, ELB/Auto Scaling 및 AI 사용 규정). 이 README의 기술 스택·주제·폴더 구조는 콘서트 티켓팅 주제에 맞추어 새로 설계한 내용입니다.

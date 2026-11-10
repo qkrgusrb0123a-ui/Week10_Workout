@@ -8,15 +8,16 @@ function renderConcerts() {
   const matches = concerts.filter((concert) => {
     const name = concert.title ?? concert.name ?? '';
     const venue = concert.venue ?? concert.location ?? '';
-    return [name, venue].some((value) => String(value).toLocaleLowerCase().includes(query));
+    return [name, venue, concertVenue(venue)].some((value) => String(value).toLocaleLowerCase().includes(query));
   });
 
   const cards = matches.map((concert) => {
     const title = concert.title ?? concert.name ?? '공연';
-    const venue = concert.venue ?? concert.location ?? '장소 미정';
+    const venue = concertVenue(concert.venue ?? concert.location);
+    const poster = concert.posterUrl ?? '/images/concert-poster01.jpg';
     return `
       <article class="concert-card">
-        <img class="card-poster" src="/images/concert-poster.jpg" alt="" width="136" height="146">
+        <img class="card-poster" src="${html(poster)}" alt="" width="136" height="146" loading="lazy">
         <div>
           <span class="card-tag">CONCERT</span>
           <h3>${html(title)}</h3>

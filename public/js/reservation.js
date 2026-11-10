@@ -19,7 +19,7 @@ function renderReservation(reservation, code) {
     ['예매번호', reservation.code ?? reservation.reservationCode ?? code],
     ['공연', title],
     ['좌석', reservation.seatId ?? reservation.seat?.seatId],
-    ['닉네임', reservation.nickname]
+    ['성명', reservation.nickname]
   ];
 
   reservationBox.innerHTML = `

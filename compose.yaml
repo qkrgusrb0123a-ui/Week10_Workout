@@ -8,6 +8,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       DB_PATH: /app/data/concert.db
+      QUEUE_ACTIVE_LIMIT: ${QUEUE_ACTIVE_LIMIT:-2}
+      QUEUE_ADMISSION_TTL_SECONDS: ${QUEUE_ADMISSION_TTL_SECONDS:-120}
     volumes:
       - concert-data:/app/data
     restart: unless-stopped

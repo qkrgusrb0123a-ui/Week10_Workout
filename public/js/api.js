@@ -39,11 +39,19 @@ const API = {
 
   concerts() { return this.request('/concerts'); },
   concert(id) { return this.request('/concerts/' + encodeURIComponent(id)); },
+  bookingChallenge(body) { return this.request('/reservations/challenge', { method: 'POST', body }); },
   book(body) { return this.request('/reservations', { method: 'POST', body }); },
   reservation(code) { return this.request('/reservations/' + encodeURIComponent(code)); },
   cancel(code) { return this.request('/reservations/' + encodeURIComponent(code), { method: 'DELETE' }); },
   join(concertId) {
-    return this.request('/queue/join', { method: 'POST', body: { concertId: Number(concertId) || concertId } });
+    const requestKey = 'queueJoin:' + concertId;
+    let requestId = sessionStorage.getItem(requestKey);
+    if (!requestId) {
+      requestId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+        byte.toString(16).padStart(2, '0')).join('');
+      sessionStorage.setItem(requestKey, requestId);
+    }
+    return this.request('/queue/join', { method: 'POST', body: { concertId: Number(concertId), requestId } });
   },
   queue(ticketId) { return this.request('/queue/' + encodeURIComponent(ticketId)); },
   leave(ticketId) { return this.request('/queue/' + encodeURIComponent(ticketId) + '/leave', { method: 'POST' }); }
@@ -53,6 +61,11 @@ const $ = (selector) => document.querySelector(selector);
 const urlParam = (key) => new URLSearchParams(location.search).get(key);
 const concertUrl = (id) => '/concert.html?id=' + encodeURIComponent(id);
 const ticketKey = (id) => 'queueTicket:' + id;
+
+function concertVenue(venue) {
+  const stage = String(venue ?? '').match(/^(?:스테이지|stage)\s*0?([1-3])$/i);
+  return stage ? 'STAGE 0' + stage[1] : venue ?? '장소 미정';
+}
 
 function showNotice(element, text = '', state = '') {
   element.textContent = text;
