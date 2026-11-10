@@ -11,17 +11,17 @@
   <a class="skip-link" href="#main">본문 바로가기</a>
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="/index.html" aria-label="Concert Ticketing 홈">
+      <a class="brand" href="/index.html" aria-label="Concert Ticketing 홈" data-leave-booking>
         <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 8.5v2m0 3v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
         <span>Concert Ticketing</span>
       </a>
       <nav class="site-nav" aria-label="주 메뉴">
-        <a class="nav-ticket" href="/reservation.html">예매 확인 <span aria-hidden="true">↗</span></a>
+        <a class="nav-ticket" href="/reservation.html" data-leave-booking>예매 확인 <span aria-hidden="true">↗</span></a>
       </nav>
     </div>
   </header>
-  <main id="main" class="shell inner-page">
-    <a class="back-link" href="/index.html#shows"><span aria-hidden="true">←</span> 공연 목록</a>
+  <main id="main" class="shell inner-page" tabindex="-1">
+    <a class="back-link" href="/index.html#shows" data-leave-booking><span aria-hidden="true">←</span> 공연 목록</a>
     <p id="notice" class="notice" role="status">공연 정보를 불러오고 있습니다.</p>
     <section id="detail" class="detail panel" aria-labelledby="concert-title" hidden>
       <img id="concert-poster" class="detail-poster" src="/images/concert-poster01.jpg" alt="" width="480" height="640">
@@ -34,14 +34,14 @@
           <div><dt>공연 장소</dt><dd id="concert-venue"></dd></div>
         </dl>
         <a id="join" class="button button-primary" href="/index.html#shows">예매하기 <span aria-hidden="true">→</span></a>
-        <a id="seat-link" class="button button-primary" href="#seat-selection" hidden>좌석 선택하기 <span aria-hidden="true">↓</span></a>
+        <button id="seat-link" class="button button-primary" type="button" hidden>좌석 선택하기 <span aria-hidden="true">↓</span></button>
       </div>
     </section>
 
     <section id="seat-selection" class="seat-layout" aria-labelledby="seat-title" hidden>
       <div class="panel seat-panel">
         <p class="eyebrow">SEATING MAP</p>
-        <h2 id="seat-title">좌석 배치도</h2>
+        <h2 id="seat-title" tabindex="-1">좌석 배치도</h2>
         <p id="seat-hint" class="muted">좌석을 확인하고 예매 화면에 입장하세요.</p>
         <div id="stage" class="stage">STAGE</div>
         <p id="seat-count" class="seat-count" role="status"></p>
@@ -66,6 +66,15 @@
       </div>
     </section>
   </main>
+  <dialog id="leave-dialog" class="panel booking-dialog" aria-labelledby="leave-title" aria-describedby="leave-message">
+    <h2 id="leave-title">예매 화면 나가기</h2>
+    <p id="leave-message">예매 화면을 나가면 선택한 좌석과 입력 내용이 초기화됩니다. 나가시겠습니까?</p>
+    <p id="leave-notice" class="notice" role="status" hidden></p>
+    <form class="security-actions" method="dialog">
+      <button id="leave-stay" class="button button-secondary" type="submit" autofocus>계속 예매</button>
+      <button id="leave-confirm" class="button button-danger" type="button">나가기</button>
+    </form>
+  </dialog>
   <dialog id="security-dialog" class="panel booking-dialog" aria-labelledby="security-title" aria-describedby="security-help">
     <form id="security-form">
       <h2 id="security-title">보안문자 확인</h2>

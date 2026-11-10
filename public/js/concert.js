@@ -14,12 +14,18 @@ const securityConfirm = $('#security-confirm');
 const completionDialog = $('#completion-dialog');
 const completionCode = $('#completion-code');
 const copyNotice = $('#copy-notice');
+const leaveDialog = $('#leave-dialog');
+const leaveNotice = $('#leave-notice');
+const leaveStay = $('#leave-stay');
+const leaveConfirm = $('#leave-confirm');
 let seats = [];
 let selected = null;
 let ticketId = null;
 let busy = false;
 let pendingBooking = null;
 let challengeId = null;
+let bookingStarted = false;
+let leaveDestination;
 
 function normalizeSeats(data) {
   const direct = list(data, 'seats');
@@ -67,6 +73,7 @@ function renderSeats() {
     button.textContent = seat.id;
     button.setAttribute('aria-label', seat.id + (seat.taken ? ' 예약됨' : ''));
     button.addEventListener('click', () => {
+      startBooking();
       selected = selected === seat.id ? null : seat.id;
       showNotice(result);
       updateSelection();
@@ -89,11 +96,92 @@ function setAdmission(token) {
   updateSelection();
 }
 
+function warnBeforeLeave(event) {
+  event.preventDefault();
+  event.returnValue = true;
+}
+
+function startBooking() {
+  if (!ticketId || bookingStarted) return;
+  bookingStarted = true;
+  window.addEventListener('beforeunload', warnBeforeLeave);
+}
+
 function clearAdmission() {
   sessionStorage.removeItem(ticketKey(concertId));
+  window.removeEventListener('beforeunload', warnBeforeLeave);
+  bookingStarted = false;
   selected = null;
   setAdmission(null);
 }
+
+function discardBooking() {
+  clearAdmission();
+  sessionStorage.removeItem('queueJoin:' + concertId);
+  pendingBooking = null;
+  challengeId = null;
+  bookingForm.reset();
+  securityForm.reset();
+  securityDialog.close();
+  leaveDialog.close();
+  showNotice(result);
+}
+
+$('#seat-link').addEventListener('click', () => {
+  startBooking();
+  $('#seat-title').focus({ preventScroll: true });
+  $('#seat-selection').scrollIntoView();
+});
+
+$('.skip-link').addEventListener('click', (event) => {
+  if (!ticketId) return;
+  event.preventDefault();
+  $('#main').focus({ preventScroll: true });
+  $('#main').scrollIntoView();
+});
+
+$('#nickname').addEventListener('input', startBooking);
+
+for (const link of document.querySelectorAll('[data-leave-booking]')) {
+  link.addEventListener('click', (event) => {
+    if (!bookingStarted || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    leaveDestination = link.href;
+    showNotice(leaveNotice);
+    leaveDialog.showModal();
+  });
+}
+
+leaveDialog.addEventListener('cancel', (event) => {
+  if (leaveConfirm.disabled) event.preventDefault();
+});
+
+leaveConfirm.addEventListener('click', async () => {
+  leaveConfirm.disabled = true;
+  leaveStay.disabled = true;
+  showNotice(leaveNotice);
+  try {
+    await API.leave(ticketId);
+  } catch (error) {
+    showNotice(leaveNotice, error.message, 'error');
+    return;
+  } finally {
+    leaveConfirm.disabled = false;
+    leaveStay.disabled = false;
+  }
+  discardBooking();
+  location.assign(leaveDestination);
+});
+
+window.addEventListener('pagehide', () => {
+  const activeTicket = ticketId ?? sessionStorage.getItem(ticketKey(concertId));
+  if (!activeTicket) return;
+  const url = '/api/queue/' + encodeURIComponent(activeTicket) + '/leave';
+  if (!navigator.sendBeacon?.(url)) {
+    fetch(url, { method: 'POST', keepalive: true }).catch(() => {});
+  }
+  discardBooking();
+});
 
 async function loadConcert() {
   const notice = $('#notice');
@@ -129,7 +217,8 @@ async function loadConcert() {
   const saved = sessionStorage.getItem(ticketKey(concertId));
   if (!saved) return;
   try {
-    if (isAdmitted(ticketInfo(await API.queue(saved)))) {
+    const admission = ticketInfo(await API.queue(saved));
+    if (sessionStorage.getItem(ticketKey(concertId)) === saved && isAdmitted(admission)) {
       setAdmission(saved);
     }
   } catch (error) {
@@ -149,6 +238,7 @@ function setSecurityBusy(value) {
 }
 
 async function loadChallenge(message) {
+  if (!pendingBooking) return;
   challengeId = null;
   securityImage.hidden = true;
   securityImage.removeAttribute('src');
