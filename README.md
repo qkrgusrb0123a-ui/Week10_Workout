@@ -1,7 +1,7 @@
 # Concert Ticketing - 콘서트 티켓 예매 웹서비스
 
 > **클라우드컴퓨팅 Ch.10 AWS 프로젝트 적용 과제 | 프로젝트 설계 및 README 초안**  
-> **진행 순서: 로컬 개발 → 로컬 기능·Docker 검증 → GitHub 반영 → AWS EC2 배포 → AWS 배포 주소에서 재검증.** 현재 AWS는 미배포 상태이며, 주소·시험 결과·제출 커밋은 직접 확인한 후 기입합니다.
+> **진행 순서: 로컬 개발 → 로컬 기능·Docker 검증 → GitHub 반영 → AWS EC2 배포 → AWS 배포 주소에서 재검증.** 현재 AWS는 미배포 상태입니다. SSH 개인 키 파일 권한 수정까지만 확인했으며, SSH 로그인·배포 주소·시험 결과·제출 커밋은 실제 검증 후 기입합니다.
 
 ## 1. 서비스 소개
 
@@ -19,7 +19,7 @@
 | 2 | 좌석 선택 및 예매 | 빈 좌석 선택 → 닉네임 입력 → 예매 버튼 클릭 | 예매번호 발급 및 해당 좌석 예약 처리 |
 | 3 | 예매 내역 조회 | 예매번호 입력 → 조회 버튼 클릭 | 예약한 공연·좌석·상태 표시 |
 | 4 | 예매 취소 | 예매번호 조회 → 취소 버튼 클릭 | 예약 취소 및 좌석 재오픈 |
-| 5 | 예매 입장 대기열 | 예매 가능 인원이 가득찬 상태에서 예매하기 선택 | 대기번호 표시, 순서가 되면 예매 화면 입장 |
+| 5 | 예매 입장 대기열 | 예매 가능 인원이 가득 찬 상태에서 예매하기 선택 | 대기번호 표시, 순서가 되면 예매 화면 입장 |
 
 **접속 집중 시나리오:** 인기 콘서트 티켓 오픈 직후 다수의 브라우저가 예매 화면 입장을 시도하거나 동일 좌석 예매를 동시에 요청하는 상황.
 
@@ -86,41 +86,59 @@ Week10_Workout/
 
 위 구조는 **개발 목표**이며, 실제 구현 후 파일과 명령을 맞춰 갱신합니다. `data/`, `.env` 및 DB 파일은 Git 추적에서 제외하고, 설정 예시는 `.env.example`로 제공합니다.
 
-## 4. AWS 배포 구성도
+## 4. AWS 배포 구성 및 환경 (예정)
+
+기존에 사용하던 **AWS EC2 인스턴스 1대**를 재사용합니다. 현재는 SSH 개인 키의 Windows 파일 권한 수정까지 확인했으며, **SSH 로그인·포트 점검·애플리케이션 배포는 아직 검증하지 않았습니다.**
 
 ```mermaid
 flowchart TD
     U["사용자 브라우저"]
-    subgraph EC2["AWS EC2 / Ubuntu (배포 예정)"]
-        APP["Docker 컨테이너 / Express :3000"]
-        DB[("SQLite / 영속 볼륨")]
-        APP <--> DB
+    U -->|"HTTP :8080 (예정)"| SG["EC2 보안 그룹 / 인바운드 규칙"]
+    subgraph EC2["기존 AWS EC2 / Ubuntu (운영체제 확인 예정)"]
+        SG -->|"호스트 :8080 → 컨테이너 :3000"| APP["Docker Compose / Express :3000"]
+        APP <--> DB[("SQLite / 영속 데이터")]
     end
-    U <-->|"HTTP :80 → 컨테이너 :3000"| APP
 ```
 
-**사용자 요청 경로:** 브라우저 → EC2 퍼블릭 IP(80번 포트) → Docker 포트 매핑 → Express(3000번 포트) → SQLite → API 응답 → 브라우저.
+**요청 및 응답 경로:** 브라우저 → EC2 퍼블릭 IP와 보안 그룹(예정 포트 `8080`) → Docker 포트 매핑 → Express(`3000`) → SQLite → API 응답. 실제 포트는 기존 서비스와의 충돌 여부 및 `compose.yaml` 설정 확인 후 확정합니다.
 
-| AWS 서비스 | 역할 | 선택 이유 |
+| 항목 | 설정 및 상태 |
+|---|---|
+| AWS 서비스 | 기존 EC2 인스턴스 재사용 |
+| 운영체제 | Ubuntu 사용 예정 (SSH 접속 후 확인) |
+| 현재 확인에 사용한 퍼블릭 IP | `15.134.217.132` (변경 가능) |
+| SSH 사용자 | `ubuntu` |
+| SSH 인증 | 기존 PEM 개인 키 사용 |
+| 배포 및 실행 | GitHub + Docker Compose (예정) |
+| 외부 웹 포트 | `8080/tcp` (예정, 미확정) |
+| 컨테이너 내부 포트 | `3000/tcp` (예정) |
+| 데이터베이스 | SQLite, 영속 저장 경로 구성 예정 |
+| 공개 접속 주소 | `http://15.134.217.132:8080` (예시, 아직 미배포) |
+
+| 구성 요소 | 역할 | 선택 이유 |
 |---|---|---|
-| EC2 | 서버에서 정적 페이지, API, DB 실행 | AWS 서비스를 1개 이상 사용한 실제 배포 및 기능 점검을 단순하게 구성 가능 |
-| Security Group (EC2 방화벽 설정) | 웹 접속 및 관리 포트 제한 | 필요한 포트만 허용 |
+| EC2 | 웹 화면·API·데이터베이스가 동작하는 서버 | 기존 자원을 재활용해 배포 및 시연 환경 구성 |
+| EC2 보안 그룹 | SSH 및 웹 서비스 접근 허용 범위 설정 | 필요한 포트만 열어 외부 접속을 관리 |
+| Docker Compose | 애플리케이션 빌드·실행·재시작 관리 | 로컬과 EC2의 실행 방식 일치 |
 
-- **현재 배포 계획:** EC2 한 대에 앱 컨테이너 실행. SQLite 데이터 파일은 영속 볼륨에 저장.
-- **포트 계획:** 외부 `80/tcp` → 컨테이너 `3000/tcp`, SSH `22/tcp`는 관리자 IP로만 제한 권장.
-- **접속 주소:** `http://<EC2_PUBLIC_IP>/` (**배포 후 실제 주소로 교체**)
-- 운영 환경에서 공개 서비스를 장기 제공한다면 도메인과 HTTPS(TLS) 구성을 별도로 검토합니다.
+**운영 주의사항:** 기존 EC2에 실행 중인 다른 프로젝트가 있을 수 있으므로 컨테이너와 포트를 확인하기 전에는 기존 서비스를 중지·삭제하지 않습니다. SSH `22/tcp`는 가능한 한 관리자 IP에서만 접근하도록 제한합니다. 장기 공개 운영 시에는 도메인 및 HTTPS 구성을 별도로 검토합니다.
 
-## 5. 실행 방법 (구현 후 검증 예정)
+ELB(ALB)와 Auto Scaling의 미적용 근거 및 향후 확장 계획은 [8. ELB 및 Auto Scaling 확장 검토](#8-elb-및-auto-scaling-확장-검토)에 정리했습니다.
 
-### 준비 사항
+## 5. 실행·연결·배포 방법 (구현 및 검증 예정)
+
+### 5.1 준비 사항
 
 - Git
-- Node.js 및 npm (직접 실행할 경우)
-- Docker 및 Docker Compose (컨테이너 실행할 경우)
-- AWS 계정과 EC2 접근용 SSH 키 (배포할 경우)
+- Node.js 및 npm (직접 실행 시)
+- Docker Engine 및 Docker Compose (컨테이너 실행 시)
+- 기존 EC2 접근용 SSH 개인 키 (`.pem` 파일)
 
-### 로컬에서 실행
+> 명령 및 포트는 설계에 따른 **예정값**입니다. 실제 소스 파일과 서버 구성을 확인한 뒤 확정해야 합니다. PEM 파일 자체나 비밀정보는 GitHub에 업로드하지 않습니다.
+
+### 5.2 로컬 실행 및 점검
+
+직접 실행하는 경우:
 
 ```bash
 git clone https://github.com/qkrgusrb0123a-ui/Week10_Workout.git
@@ -129,48 +147,97 @@ npm install
 npm start
 ```
 
-브라우저에서 `http://localhost:3000` 접속.
+접속 예정 주소: `http://localhost:3000`
 
-또는 Docker Compose 사용:
+Docker Compose로 실행하는 경우:
 
 ```bash
+docker compose config
 docker compose up -d --build
 docker compose ps
 ```
 
-브라우저에서 `http://localhost` 접속 (호스트 `80:3000` 포트 매핑 기준).
+접속 주소는 `compose.yaml`의 실제 호스트 포트 설정에 따릅니다. 예를 들어 `8080:3000`이면 `http://localhost:8080`입니다.
 
-> 위 실행 명령과 포트는 **계획값**입니다. 파일 구현 후 실제 로컬 PC에서 확인하고 수정합니다. Docker 검증에서는 DB 영속 볼륨이 재시작 뒤에도 유지되는지도 확인합니다.
+**AWS 배포 전 확인할 사항**
 
-### 로컬 완료 조건 (AWS 배포 전)
+1. `/api/health`의 정상 응답과 공연 조회·예매·조회·취소·대기열의 동작 확인
+2. 기능별 정상 시험 1건, 실패 또는 경계 시험 1건 수행
+3. 서로 다른 브라우저에서 동일 좌석 동시 예매 시 한 요청만 성공하는지 확인
+4. 취소 후 재예매 및 컨테이너 재시작 후 SQLite 기록 유지 확인
+5. 실행 결과와 소스를 GitHub에 반영한 뒤 EC2 배포 진행
 
-1. 서버 실행과 `/api/health` 응답 확인
-2. 공연 조회·예매·조회·취소·대기열의 정상 및 실패/경계 시험
-3. 서로 다른 브라우저에서 같은 좌석 동시 요청 시 **한 건만 성공**하는지 확인
-4. 예매 취소 후 재예매 및 서버 재시작 후 기록 유지 확인
-5. `docker compose up -d --build`와 종료/재시작 후 동작 확인
-6. 로컬 결과를 기록하고 GitHub에 코드·README를 반영한 뒤 AWS 배포 시작
+### 5.3 기존 EC2에 SSH 접속
 
-### AWS EC2 배포 절차 (예정)
+Windows PowerShell에서 기존 PEM 개인 키를 사용합니다.
 
-1. AWS EC2에서 Ubuntu 인스턴스를 생성합니다.
-2. EC2 보안 그룹에서 `80/tcp` 웹 접속을 허용하고, `22/tcp`는 본인 IP만 허용합니다.
-3. EC2에 SSH로 접속한 뒤 Git과 Docker Engine/Compose 플러그인을 설치합니다.
-4. Public GitHub 저장소에서 소스를 내려받습니다.
-5. EC2의 프로젝트 디렉터리에서 `docker compose up -d --build` 실행합니다.
-6. `docker compose ps`, `docker compose logs`로 상태를 확인합니다.
-7. 브라우저에서 `http://<EC2_PUBLIC_IP>/`로 접속하고 기능 **5개**의 정상 및 실패/경계 동작을 다시 검증합니다.
-8. 제출 및 검사 완료 시까지 서비스 배포 상태를 유지합니다.
+```powershell
+ssh -i "C:\ec2\student-key.pem" ubuntu@15.134.217.132
+```
 
-**검증 후 기입할 정보**
+초기 시도에서 `Permission denied (publickey)`가 발생했고, 키 파일의 접근 권한이 너무 넓다는 오류(`UNPROTECTED PRIVATE KEY FILE`)를 확인했습니다. 다음 명령으로 상속 권한을 제거하고 현재 Windows 사용자에게 읽기 권한을 부여했습니다.
 
-| 항목 | 값 |
-|---|---|
-| AWS 배포 주소 | `미배포` |
-| GitHub 저장소 | [qkrgusrb0123a-ui/Week10_Workout](https://github.com/qkrgusrb0123a-ui/Week10_Workout) (**Public, 연결 확인**) |
-| 제출 버전 (커밋 해시 또는 태그) | `미확정` |
-| 로컬 검증 일시 및 환경 | `미검증` |
-| AWS 검증 일시 및 환경 | `미검증` |
+```powershell
+icacls "C:\ec2\student-key.pem" /inheritance:r
+icacls "C:\ec2\student-key.pem" /grant:r "${env:USERNAME}:(R)"
+icacls "C:\ec2\student-key.pem"
+```
+
+**확인된 결과:** `icacls` 출력에 현재 사용자에 대한 `(R)` 권한만 표시됨. **미확인:** 해당 키로 EC2 SSH 로그인에 성공했는지 여부.
+
+### 5.4 기존 서버 환경 및 포트 점검 (예정)
+
+SSH 로그인에 성공한 뒤 EC2 내부에서 실행합니다.
+
+```bash
+cat /etc/os-release
+git --version
+docker --version
+docker compose version
+sudo docker ps
+sudo ss -lntp
+```
+
+기존 컨테이너와 사용 중인 포트를 확인하여 새 서비스의 웹 포트를 확정합니다. `8080`이 이미 사용 중이면 다른 미사용 포트를 선택하고 Compose 포트 매핑과 보안 그룹 규칙을 함께 수정합니다.
+
+### 5.5 GitHub 소스 내려받기 (예정)
+
+```bash
+mkdir -p ~/projects
+cd ~/projects
+git clone https://github.com/qkrgusrb0123a-ui/Week10_Workout.git
+cd Week10_Workout
+```
+
+저장소에 `Dockerfile`, `compose.yaml`, 애플리케이션 소스가 실제로 존재하는지 확인합니다. 기존 프로젝트의 컨테이너나 데이터는 건드리지 않습니다.
+
+### 5.6 Docker Compose 실행 (예정)
+
+```bash
+sudo docker compose config
+sudo docker compose up -d --build
+sudo docker compose ps
+sudo docker compose logs --tail=100
+```
+
+예정 포트가 `8080:3000`으로 확정되었다면 EC2 내부에서 아래 경로를 확인합니다.
+
+```bash
+curl -i http://localhost:8080/api/health
+```
+
+그 다음 보안 그룹의 웹 포트 접근 허용을 확인하고, 외부 브라우저에서 `http://15.134.217.132:8080`에 접속합니다. **해당 주소는 아직 정상 접속을 확인한 배포 주소가 아닙니다.**
+
+### 5.7 이후 코드 변경 반영 (배포 완료 후)
+
+```bash
+cd ~/projects/Week10_Workout
+git pull origin main
+sudo docker compose up -d --build
+sudo docker compose ps
+```
+
+실제 배포 후에는 공인 IP·외부 포트·검증 일시·Git 커밋 해시를 README에 기록합니다. 검사 완료 시까지 배포 상태를 유지합니다.
 
 ## 6. API 설계 (예정)
 
@@ -236,11 +303,11 @@ docker compose ps
 
 | 항목 | 기록 |
 |---|---|
-| AI 사용 여부 | 사용 |
-| 도구 | ChatGPT |
-| 활용 범위 | 과제 요구사항 해석, 기술 비교, 프로젝트 구조·시험 계획 검토, README 수정 |
-| 직접 확인한 결과 | README 구성 및 과제 조건 대조 (코드 구현·AWS 배포·기능 시험은 아직 미실시) |
-| 후속 기록 | 추후 AI를 사용한 코드 설명·검토 등이 있으면 추가 기입 |
+| AWS 연결 지원 | ChatGPT를 이용한 SSH 접속 오류 원인 분석 |
+| 발생한 문제 | SSH 개인 키 인증 실패 및 Windows 파일 권한 오류 |
+| 해결 과정 | icacls 명령어로 PEM 파일의 상속 권한 제거 및 사용자 읽기 권한 부여 |
+| 직접 검증 | PEM 파일 권한이 현재 사용자에게만 부여된 것을 확인 |
+| AWS 배포 상태 | SSH 개인 키 권한 수정 완료, SSH 로그인 및 Docker 배포 미검증 |
 
 > 소스 코드의 실제 구현 및 실행 검증은 과제의 AI 사용 제한을 준수하여 직접 진행합니다.
 
@@ -255,14 +322,30 @@ docker compose ps
 - [ ] 배포 주소, GitHub 링크, 제출 커밋 해시 기록
 - [ ] 주소창과 메인 화면이 함께 보이는 배포 스크린샷 확보
 - [ ] 제공된 제출 양식에 **스크린샷 3장** 및 기능 시험 결과 반영
-- [ ] AI 사용 여부·범위·직접 확인 결과 기록
+- [x] AI 사용 여부·범위·현재까지 직접 확인한 결과 기록 (향후 변경 시 갱신)
 - [ ] 검사 완료까지 AWS 배포 유지
 - [ ] PDF 파일명 **`학번_이름.pdf`**로 제출, 기한 엄수
 - [ ] 검사 후 불필요한 AWS 자원 정리, GitHub 저장소와 README 보존
 
+
+### AWS EC2 연결 진행 상태
+
+- [x] 기존 AWS EC2 인스턴스 재사용 결정
+- [x] EC2 퍼블릭 IPv4 주소 확인
+- [x] 기존 PEM 개인 키 파일 확보
+- [x] Windows PEM 파일 접근 권한 수정
+- [ ] AWS EC2 SSH 로그인 성공 확인
+- [ ] EC2 Docker 및 Docker Compose 환경 확인
+- [ ] 기존 컨테이너와 포트 충돌 검사
+- [ ] GitHub 프로젝트 다운로드
+- [ ] Docker Compose 실행
+- [ ] AWS 배포 주소 접속 확인
+- [ ] 사용자 기능 정상 및 실패 시험 완료
+
+
 ---
 
 **저장소:** https://github.com/qkrgusrb0123a-ui/Week10_Workout  
-**AWS 주소:** 미배포 (로컬 검증 후 추가)
+**AWS 주소:** 미배포 (예정 주소: `http://15.134.217.132:8080`, 확인 전)
 
 **참고:** 강의자료 *클라우드 컴퓨팅 Ch.10 AWS 프로젝트 적용* (서비스 구현, AWS 배포, 검증, README, ELB/Auto Scaling 및 AI 사용 규정). 이 README의 기술 스택·주제·폴더 구조는 콘서트 티켓팅 주제에 맞추어 새로 설계한 내용입니다.
