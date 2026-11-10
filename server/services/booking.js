@@ -21,7 +21,6 @@ function renderImage(answer) {
   const stride = Math.ceil(width * 3 / 4) * 4;
   const pixelOffset = 54;
   const bitmap = Buffer.alloc(pixelOffset + stride * height, 248);
-  // 24비트 BMP는 각 픽셀을 BGR 순서로 저장합니다.
   bitmap.fill(0, 0, pixelOffset);
   bitmap.write('BM');
   bitmap.writeUInt32LE(bitmap.length, 2);

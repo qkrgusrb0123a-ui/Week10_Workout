@@ -86,6 +86,11 @@ router.post('/', validateBooking, (req, res) => {
   if (error) return res.status(422).json({ error });
 
   const result = book.immediate(concertId, seatId, nickname);
+
+  if (result.status === 201) {
+    queue.leave(ticket.ticketId);
+  }
+
   res.status(result.status).json(result.error ? { error: result.error } : result.reservation);
 });
 

@@ -211,7 +211,7 @@ securityForm.addEventListener('submit', async (event) => {
     const reservation = reservationInfo(data);
     const code = reservation.code ?? reservation.reservationCode ?? data.code ?? data.reservationCode;
     seats.find((seat) => seat.id === seatId).taken = true;
-    selected = null;
+    clearAdmission();
     if (code) {
       showNotice(result, '예매 완료 · 예매번호 ' + code, 'success');
       const link = document.createElement('a');
