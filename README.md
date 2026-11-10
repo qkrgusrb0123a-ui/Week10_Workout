@@ -65,6 +65,9 @@ Week10_Workout/
 │   ├── waiting.html           # 입장 대기
 │   ├── css/
 │   │   └── style.css          # 공통 스타일
+│   ├── images/
+│   │   ├── concert-hero.jpg   # 배너 이미지
+│   │   └── concert-poster.jpg # 포스터 이미지
 │   └── js/
 │       ├── api.js             # Fetch API 공통 요청
 │       ├── index.js           # 공연 목록 로딩

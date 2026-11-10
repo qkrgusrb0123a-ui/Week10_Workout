@@ -3,10 +3,8 @@ node_modules
 .env
 .env.*
 !.env.example
-imege/
 data
 *.db
 *.db-shm
 *.db-wal
 README.md
-docs
