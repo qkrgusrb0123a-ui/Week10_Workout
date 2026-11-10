@@ -1,1 +1,52 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>예매 조회 | Concert Ticketing</title><link rel="stylesheet" href="/css/style.css"></head><body><header><a class="brand" href="/index.html">🎫 Concert Ticketing</a><nav><a href="/index.html">공연 목록</a><a href="/reservation.html">예매 조회</a></nav></header><main><div class="eyebrow">CONCERT TICKETING</div><h1>내 예매 확인</h1><p class="lead">예매번호로 내역을 확인하고 취소할 수 있습니다.</p><section class="panel"><form id="lookup"><label for="code">예매번호</label><div class="inline"><input id="code" required placeholder="예매번호 입력"><button>조회하기</button></div></form><div id="notice" role="status"></div><div id="reservation"></div></section></main><footer>모의 티켓 예매 서비스 · 실제 결제 및 티켓 발급 없음</footer><script src="/js/api.js"></script><script src="/js/reservation.js"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7fb">
+  <title>내 예매 | ENCORE</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">본문 바로가기</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/index.html" aria-label="ENCORE 홈">
+        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 8.5v2m0 3v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span>ENCORE<span class="brand-dot">.</span></span>
+      </a>
+      <nav class="site-nav" aria-label="주 메뉴">
+        <a href="/index.html#shows">공연 목록</a>
+        <a class="nav-ticket" href="/reservation.html" aria-current="page">내 예매 <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="shell inner-page narrow-page">
+    <a class="back-link" href="/index.html#shows"><span aria-hidden="true">←</span> 공연 목록</a>
+    <div class="page-heading">
+      <p class="eyebrow">MY TICKETS</p>
+      <h1>내 예매 확인</h1>
+      <p class="lead">예매번호를 입력하면 내역을 확인하고 취소할 수 있습니다.</p>
+    </div>
+    <section class="panel lookup-panel" aria-label="예매번호 조회">
+      <form id="lookup">
+        <label for="code">예매번호</label>
+        <div class="input-row">
+          <input id="code" name="code" required placeholder="예매번호 입력" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button class="button button-primary" type="submit">조회하기</button>
+        </div>
+      </form>
+      <p id="notice" class="notice" role="status" hidden></p>
+    </section>
+    <div id="reservation"></div>
+  </main>
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <span class="footer-brand">ENCORE.</span>
+      <span>클라우드 컴퓨팅 과제용 모의 예매 서비스</span>
+    </div>
+  </footer>
+  <script src="/js/api.js"></script>
+  <script src="/js/reservation.js"></script>
+</body>
+</html>

@@ -1,1 +1,51 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>입장 대기 | Concert Ticketing</title><link rel="stylesheet" href="/css/style.css"></head><body><header><a class="brand" href="/index.html">🎫 Concert Ticketing</a><nav><a href="/index.html">공연 목록</a><a href="/reservation.html">예매 조회</a></nav></header><main><div class="eyebrow">CONCERT TICKETING</div><h1>예매 입장 대기</h1><p class="lead">입장 순서가 되면 자동으로 좌석 선택 화면으로 이동합니다.</p><section class="panel center"><div class="spinner" aria-hidden="true"></div><h2 id="status">대기열 접속 중…</h2><p id="position">대기번호를 확인하고 있습니다.</p><p id="notice" role="status"></p><button class="secondary" id="leave">대기 취소</button></section></main><footer>모의 티켓 예매 서비스 · 실제 결제 및 티켓 발급 없음</footer><script src="/js/api.js"></script><script src="/js/waiting.js"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7fb">
+  <title>예매 입장 대기 | ENCORE</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">본문 바로가기</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/index.html" aria-label="ENCORE 홈">
+        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 8.5v2m0 3v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span>ENCORE<span class="brand-dot">.</span></span>
+      </a>
+      <nav class="site-nav" aria-label="주 메뉴">
+        <a href="/index.html#shows">공연 목록</a>
+        <a class="nav-ticket" href="/reservation.html">내 예매 <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="shell inner-page narrow-page">
+    <a id="back" class="back-link" href="/index.html#shows"><span aria-hidden="true">←</span> 공연 상세</a>
+    <section class="panel queue-panel" aria-labelledby="queue-title">
+      <p class="eyebrow">BOOKING QUEUE</p>
+      <h1 id="queue-title">예매 입장 대기</h1>
+      <p class="lead">입장 순서가 되면 좌석 선택 화면으로 이동합니다.</p>
+      <div class="queue-indicator" aria-hidden="true"><span id="spinner" class="spinner"></span></div>
+      <div class="queue-status" role="status">
+        <p id="status">대기열에 연결하고 있습니다</p>
+        <p id="position" class="queue-number" hidden></p>
+      </div>
+      <p id="notice" class="notice" role="status" hidden></p>
+      <div class="queue-actions">
+        <button id="retry" class="button button-primary" type="button" hidden>다시 시도</button>
+        <button id="leave" class="button button-secondary" type="button" disabled>대기 취소</button>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <span class="footer-brand">ENCORE.</span>
+      <span>클라우드 컴퓨팅 과제용 모의 예매 서비스</span>
+    </div>
+  </footer>
+  <script src="/js/api.js"></script>
+  <script src="/js/waiting.js"></script>
+</body>
+</html>

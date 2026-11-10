@@ -1,1 +1,79 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>공연 상세 | Concert Ticketing</title><link rel="stylesheet" href="/css/style.css"></head><body><header><a class="brand" href="/index.html">🎫 Concert Ticketing</a><nav><a href="/index.html">공연 목록</a><a href="/reservation.html">예매 조회</a></nav></header><main><div class="eyebrow">CONCERT TICKETING</div><a class="back" href="/index.html">← 공연 목록</a><div id="notice" role="status"></div><section id="detail" class="panel"></section><section class="panel"><h2>좌석 선택</h2><p>빈 좌석을 선택하세요. 실제 예매 여부는 서버에서 최종 확인합니다.</p><div class="legend"><span>🟩 선택 가능</span><span>⬛ 예약됨</span><span>🟦 선택됨</span></div><div id="seats" class="seats"></div><form id="booking"><label for="nickname">닉네임</label><input id="nickname" maxlength="30" required placeholder="예: guest01" autocomplete="nickname"><p id="selected">선택한 좌석: 없음</p><button type="submit" id="bookBtn">선택한 좌석 예매하기</button></form><div id="result" role="status"></div></section></main><footer>모의 티켓 예매 서비스 · 실제 결제 및 티켓 발급 없음</footer><script src="/js/api.js"></script><script src="/js/concert.js"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7fb">
+  <title>공연 상세 | ENCORE</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">본문 바로가기</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/index.html" aria-label="ENCORE 홈">
+        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 8.5v2m0 3v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span>ENCORE<span class="brand-dot">.</span></span>
+      </a>
+      <nav class="site-nav" aria-label="주 메뉴">
+        <a href="/index.html#shows">공연 목록</a>
+        <a class="nav-ticket" href="/reservation.html">내 예매 <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="shell inner-page">
+    <a class="back-link" href="/index.html#shows"><span aria-hidden="true">←</span> 공연 목록</a>
+    <p id="notice" class="notice" role="status">공연 정보를 불러오고 있습니다.</p>
+    <section id="detail" class="detail panel" aria-labelledby="concert-title" hidden>
+      <img class="detail-poster" src="/images/concert-poster.jpg" alt="" width="480" height="640">
+      <div class="detail-copy">
+        <p class="eyebrow">LIVE CONCERT</p>
+        <h1 id="concert-title"></h1>
+        <p id="description" class="lead" hidden></p>
+        <dl class="facts">
+          <div><dt>공연 일정</dt><dd id="concert-date"></dd></div>
+          <div><dt>공연 장소</dt><dd id="concert-venue"></dd></div>
+        </dl>
+        <a id="join" class="button button-primary" href="/index.html#shows">예매 입장하기 <span aria-hidden="true">→</span></a>
+        <a id="seat-link" class="button button-primary" href="#seat-selection" hidden>좌석 선택하기 <span aria-hidden="true">↓</span></a>
+      </div>
+    </section>
+
+    <section id="seat-selection" class="seat-layout" aria-labelledby="seat-title" hidden>
+      <div class="panel seat-panel">
+        <p class="eyebrow">SEATING MAP</p>
+        <h2 id="seat-title">좌석 배치도</h2>
+        <p id="seat-hint" class="muted">좌석을 확인하고 예매 화면에 입장하세요.</p>
+        <div class="stage" aria-label="무대">STAGE</div>
+        <p id="seat-count" class="seat-count" role="status"></p>
+        <div id="seats" class="seat-map" aria-label="공연 좌석"></div>
+        <ul class="legend" aria-label="좌석 상태">
+          <li><i aria-hidden="true"></i> 선택 가능</li>
+          <li><i class="legend-selected" aria-hidden="true"></i> 선택됨</li>
+          <li><i class="legend-taken" aria-hidden="true"></i> 예약됨</li>
+        </ul>
+      </div>
+      <div class="panel booking-panel">
+        <p class="eyebrow">YOUR TICKET</p>
+        <h2>선택한 좌석</h2>
+        <p id="selected" class="selected-seat" role="status">좌석을 선택해 주세요</p>
+        <p id="preview-note" class="muted">입장 후 좌석을 선택하고 닉네임을 입력할 수 있습니다.</p>
+        <form id="booking" hidden>
+          <label for="nickname">닉네임</label>
+          <input id="nickname" name="nickname" maxlength="30" required placeholder="예: guest01" autocomplete="nickname">
+          <button type="submit" class="button button-primary" id="book-button" disabled>예매하기</button>
+        </form>
+        <div id="result" class="notice" role="status" hidden></div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <span class="footer-brand">ENCORE.</span>
+      <span>클라우드 컴퓨팅 과제용 모의 예매 서비스</span>
+    </div>
+  </footer>
+  <script src="/js/api.js"></script>
+  <script src="/js/concert.js"></script>
+</body>
+</html>

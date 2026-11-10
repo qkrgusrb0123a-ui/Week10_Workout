@@ -1,4 +1,177 @@
-const id=urlParam('id');let chosen=null,seatData=[];const notice=$('#notice');
-async function load(){if(!id){message(notice,'공연 ID가 없습니다.');return}try{const data=await API.concert(id),c=concertInfo(data);$('#detail').innerHTML=`<div class="eyebrow">CONCERT DETAILS</div><h1>${esc(c.title||c.name||'공연 상세')}</h1><p>일정: ${esc(c.date||c.concertDate||'미정')} · 장소: ${esc(c.venue||c.location||'미정')}</p><p>${esc(c.description||'원하는 좌석을 선택해 예매하세요.')}</p>`;seatData=seatList(data);if(!seatData.length){$('#seats').textContent='좌석 데이터가 없습니다.';return}render()}catch(e){message(notice,e.message)}}
-function render(){const box=$('#seats');box.replaceChildren();seatData.forEach(s=>{const sid=String(s.seatId??s.id??s.name??s.label??'');const busy=s.booked===true||s.reserved===true||s.available===false||['booked','reserved','occupied'].includes(String(s.status||'').toLowerCase());const b=document.createElement('button');b.type='button';b.textContent=sid;b.className='seat'+(busy?' booked':'')+(chosen===sid?' selected':'');b.disabled=busy;b.setAttribute('aria-pressed',String(chosen===sid));b.addEventListener('click',()=>{chosen=sid;$('#selected').textContent='선택한 좌석: '+sid;render()});box.append(b)})}
-$('#booking').addEventListener('submit',async e=>{e.preventDefault();if(!chosen){message($('#result'),'좌석을 선택하세요.');return}const nickname=$('#nickname').value.trim();if(!nickname){message($('#result'),'닉네임을 입력하세요.');return}const token=sessionStorage.getItem('queueTicket:'+id);if(!token){location.href='/waiting.html?concertId='+encodeURIComponent(id);return}const btn=$('#bookBtn');btn.disabled=true;try{const data=await API.book({concertId:Number(id)||id,seatId:chosen,nickname,queueTicketId:token,ticketId:token});const code=bookingCode(data);if(code){message($('#result'),'예매 완료! 예매번호: '+code,'success');$('#result').append(document.createElement('br'));const a=document.createElement('a');a.href='/reservation.html?code='+encodeURIComponent(code);a.textContent='예매 내역 확인 →';$('#result').append(a)}else{message($('#result'),'예매 요청이 완료되었습니다. 서버 응답에서 예매번호를 확인하세요.','success')}chosen=null;await load()}catch(err){message($('#result'),err.message);await load()}finally{btn.disabled=false}});load();
+const concertId = urlParam('id');
+const seatMap = $('#seats');
+const bookingForm = $('#booking');
+const bookButton = $('#book-button');
+const result = $('#result');
+let seats = [];
+let selected = null;
+let ticketId = null;
+let booking = false;
+
+function normalizeSeats(data) {
+  const direct = list(data, 'seats');
+  const records = direct.length ? direct : list(concertInfo(data), 'seats');
+  return records.map((seat) => ({
+    id: String(seat.seatId ?? seat.id ?? seat.name ?? seat.label ?? ''),
+    taken: seat.booked === true || seat.reserved === true || seat.available === false ||
+      ['booked', 'reserved', 'occupied'].includes(String(seat.status).toLowerCase())
+  })).filter((seat) => seat.id);
+}
+
+function updateSelection() {
+  $('#selected').textContent = selected ?? '좌석을 선택해 주세요';
+  bookButton.disabled = booking || !ticketId || !selected;
+  for (const button of seatMap.querySelectorAll('button')) {
+    const active = button.dataset.seatId === selected;
+    button.classList.toggle('selected', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.disabled = booking || !ticketId || button.classList.contains('booked');
+  }
+}
+
+function renderSeats() {
+  const groups = new Map();
+  const available = seats.filter((seat) => !seat.taken).length;
+  $('#seat-count').textContent = seats.length
+    ? '선택 가능 ' + available + '석 / 전체 ' + seats.length + '석'
+    : '등록된 좌석이 없습니다.';
+
+  for (const seat of seats) {
+    const rowName = seat.id.match(/^(.+)-[^-]+$/)?.[1] ?? '';
+    if (!groups.has(rowName)) {
+      const row = document.createElement('div');
+      row.className = 'seat-row';
+      if (rowName) {
+        row.setAttribute('role', 'group');
+        row.setAttribute('aria-label', rowName + '열');
+      }
+      groups.set(rowName, row);
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = seat.taken ? 'seat booked' : 'seat';
+    button.dataset.seatId = seat.id;
+    button.textContent = seat.id;
+    button.setAttribute('aria-label', seat.id + (seat.taken ? ' 예약됨' : ''));
+    button.addEventListener('click', () => {
+      selected = selected === seat.id ? null : seat.id;
+      showNotice(result);
+      updateSelection();
+    });
+    groups.get(rowName).append(button);
+  }
+  seatMap.replaceChildren(...groups.values());
+  updateSelection();
+}
+
+function setAdmission(token) {
+  ticketId = token;
+  $('#join').hidden = Boolean(token);
+  $('#seat-link').hidden = !token;
+  bookingForm.hidden = !token;
+  $('#preview-note').hidden = Boolean(token);
+  $('#seat-hint').textContent = token
+    ? '예매할 좌석 1개를 선택해 주세요.'
+    : '좌석을 확인하고 예매 화면에 입장하세요.';
+  updateSelection();
+}
+
+async function loadConcert() {
+  const notice = $('#notice');
+  if (!concertId) {
+    showNotice(notice, '공연을 선택해 주세요.', 'error');
+    return;
+  }
+
+  try {
+    const data = await API.concert(concertId);
+    const concert = concertInfo(data);
+    const title = concert.title ?? concert.name ?? '공연 상세';
+    $('#concert-title').textContent = title;
+    $('#concert-date').textContent = concertDate(concert);
+    $('#concert-venue').textContent = concert.venue ?? concert.location ?? '장소 미정';
+    $('#description').textContent = concert.description ?? '';
+    $('#description').hidden = !concert.description;
+    $('#join').href = '/waiting.html?concertId=' + encodeURIComponent(concertId);
+    document.title = title + ' | ENCORE';
+    seats = normalizeSeats(data);
+    renderSeats();
+    $('#detail').hidden = false;
+    $('#seat-selection').hidden = false;
+    showNotice(notice);
+  } catch (error) {
+    showNotice(notice, error.message, 'error');
+    return;
+  }
+
+  const saved = sessionStorage.getItem(ticketKey(concertId));
+  if (!saved) return;
+  try {
+    if (isAdmitted(ticketInfo(await API.queue(saved)))) {
+      setAdmission(saved);
+    }
+  } catch (error) {
+    if (!error.unavailable && [404, 410].includes(error.status)) {
+      sessionStorage.removeItem(ticketKey(concertId));
+    }
+  }
+}
+
+bookingForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (booking || !selected || !ticketId) return;
+  const nicknameInput = $('#nickname');
+  const nickname = nicknameInput.value.trim();
+  if (!nickname) {
+    showNotice(result, '닉네임을 입력해 주세요.', 'error');
+    nicknameInput.focus();
+    return;
+  }
+
+  const seatId = selected;
+  booking = true;
+  updateSelection();
+  showNotice(result, '예매 요청을 처리하고 있습니다.');
+  try {
+    const data = await API.book({
+      concertId: Number(concertId) || concertId,
+      seatId,
+      nickname,
+      queueTicketId: ticketId,
+      ticketId
+    });
+    const reservation = reservationInfo(data);
+    const code = reservation.code ?? reservation.reservationCode ?? data.code ?? data.reservationCode;
+    seats.find((seat) => seat.id === seatId).taken = true;
+    selected = null;
+    if (code) {
+      showNotice(result, '예매 완료 · 예매번호 ' + code, 'success');
+      const link = document.createElement('a');
+      link.className = 'text-link';
+      link.href = '/reservation.html?code=' + encodeURIComponent(code);
+      link.textContent = '예매 내역 확인 →';
+      result.append(link);
+    } else {
+      showNotice(result, '예매 요청은 처리됐으나 서버 응답에 예매번호가 없습니다.');
+    }
+  } catch (error) {
+    showNotice(result, error.message, 'error');
+    if ([401, 403, 410].includes(error.status)) {
+      sessionStorage.removeItem(ticketKey(concertId));
+      selected = null;
+      setAdmission(null);
+    } else if (error.status === 409) {
+      try {
+        seats = normalizeSeats(await API.concert(concertId));
+        if (!seats.some((seat) => seat.id === seatId && !seat.taken)) selected = null;
+      } catch {
+        selected = null;
+      }
+    }
+  } finally {
+    booking = false;
+    renderSeats();
+  }
+});
+
+loadConcert();

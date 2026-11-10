@@ -1,1 +1,120 @@
-const concertId=urlParam('concertId');let ticketId=null,stopped=false;const key='queueTicket:'+concertId;function update(t){const pos=t.position??t.queuePosition??t.waitingNumber??t.rank;$('#status').textContent=admitted(t)?'입장 가능합니다!':'예매 입장을 기다리고 있습니다';$('#position').textContent=pos!=null?'현재 대기번호: '+pos:'순서를 확인 중입니다.'}async function poll(){if(stopped||!ticketId)return;try{const t=ticketInfo(await API.queue(ticketId));if(['expired','cancelled','canceled'].includes(String(t.status||'').toLowerCase())){stopped=true;sessionStorage.removeItem(key);message($('#notice'),'대기권이 만료되었습니다. 다시 입장해 주세요.');return}update(t);if(admitted(t)){stopped=true;location.replace('/concert.html?id='+encodeURIComponent(concertId));return}}catch(e){message($('#notice'),e.message)}if(!stopped)setTimeout(poll,2500)}async function start(){if(!concertId){message($('#notice'),'공연 정보가 없습니다.');return}try{ticketId=sessionStorage.getItem(key);let t;if(ticketId){try{t=ticketInfo(await API.queue(ticketId))}catch{ticketId=null;sessionStorage.removeItem(key)}}if(!ticketId){t=ticketInfo(await API.join(Number(concertId)||concertId));ticketId=t.ticketId||t.id||t.queueTicketId||t.token;if(!ticketId)throw Error('서버 응답에 대기권 ID가 없습니다.');sessionStorage.setItem(key,ticketId)}update(t);if(admitted(t)){location.replace('/concert.html?id='+encodeURIComponent(concertId));return}poll()}catch(e){message($('#notice'),e.message)}}$('#leave').onclick=async()=>{stopped=true;if(ticketId){try{await API.leave(ticketId)}catch(e){message($('#notice'),e.message);stopped=false;return}}sessionStorage.removeItem(key);location.href='/index.html'};start();
+const concertId = urlParam('concertId');
+const queueStatus = $('#status');
+const queuePosition = $('#position');
+const queueNotice = $('#notice');
+const retry = $('#retry');
+const leave = $('#leave');
+const spinner = $('#spinner');
+const queueKey = ticketKey(concertId);
+let ticketId = null;
+let pollTimer;
+
+function stopQueue(text, errorText, canRetry = true) {
+  queueStatus.textContent = text;
+  queuePosition.hidden = true;
+  spinner.hidden = true;
+  retry.hidden = !canRetry;
+  showNotice(queueNotice, errorText, 'error');
+}
+
+function updateQueue(ticket) {
+  showNotice(queueNotice);
+  if (isAdmitted(ticket)) {
+    leave.disabled = true;
+    queueStatus.textContent = '입장 순서가 되었습니다';
+    location.replace(concertUrl(concertId));
+    return;
+  }
+  if (isTicketClosed(ticket)) {
+    ticketId = null;
+    sessionStorage.removeItem(queueKey);
+    leave.disabled = true;
+    stopQueue('대기권을 다시 받아 주세요', '현재 대기권이 만료되었거나 취소되었습니다.');
+    return;
+  }
+
+  const position = ticket.position ?? ticket.queuePosition ?? ticket.waitingNumber ?? ticket.rank;
+  queueStatus.textContent = '예매 입장 순서를 기다리고 있습니다';
+  queuePosition.textContent = position != null ? '현재 대기번호 ' + position + '번' : '';
+  queuePosition.hidden = position == null;
+  pollTimer = window.setTimeout(poll, 2500);
+}
+
+async function poll() {
+  pollTimer = null;
+  leave.disabled = true;
+  try {
+    updateQueue(ticketInfo(await API.queue(ticketId)));
+  } catch (error) {
+    if (!error.unavailable && [404, 410].includes(error.status)) {
+      sessionStorage.removeItem(queueKey);
+      ticketId = null;
+      stopQueue('대기권을 다시 받아 주세요', '현재 대기권을 확인할 수 없습니다.');
+    } else if (error.unavailable) {
+      stopQueue('대기열을 이용할 수 없습니다', error.message);
+    } else {
+      showNotice(queueNotice, error.message, 'error');
+      pollTimer = window.setTimeout(poll, 2500);
+    }
+  } finally {
+    if (pollTimer) leave.disabled = false;
+  }
+}
+
+async function start() {
+  if (!concertId) {
+    $('#back').innerHTML = '<span aria-hidden="true">←</span> 공연 목록';
+    stopQueue('공연을 선택해 주세요', '대기열에 입장할 공연 정보가 없습니다.', false);
+    return;
+  }
+  $('#back').href = concertUrl(concertId);
+  retry.hidden = true;
+  leave.disabled = true;
+  spinner.hidden = false;
+  queueStatus.textContent = '대기열에 연결하고 있습니다';
+  showNotice(queueNotice);
+
+  try {
+    ticketId = sessionStorage.getItem(queueKey);
+    let ticket;
+    if (ticketId) {
+      try {
+        ticket = ticketInfo(await API.queue(ticketId));
+        if (isTicketClosed(ticket)) ticket = null;
+      } catch (error) {
+        if (error.unavailable || ![404, 410].includes(error.status)) throw error;
+      }
+    }
+    if (!ticket) {
+      sessionStorage.removeItem(queueKey);
+      ticketId = null;
+      ticket = ticketInfo(await API.join(concertId));
+      ticketId = ticket.ticketId ?? ticket.id ?? ticket.queueTicketId ?? ticket.token;
+      if (!ticketId) throw new Error('서버 응답에 대기권 번호가 없습니다.');
+      sessionStorage.setItem(queueKey, ticketId);
+    }
+    updateQueue(ticket);
+    if (pollTimer) leave.disabled = false;
+  } catch (error) {
+    stopQueue('대기열을 이용할 수 없습니다', error.message);
+  }
+}
+
+retry.addEventListener('click', start);
+leave.addEventListener('click', async () => {
+  if (!ticketId || leave.disabled) return;
+  window.clearTimeout(pollTimer);
+  pollTimer = null;
+  leave.disabled = true;
+  try {
+    await API.leave(ticketId);
+    sessionStorage.removeItem(queueKey);
+    location.href = concertUrl(concertId);
+  } catch (error) {
+    showNotice(queueNotice, error.message, 'error');
+    leave.disabled = false;
+    pollTimer = window.setTimeout(poll, 2500);
+  }
+});
+
+start();
