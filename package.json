@@ -1,0 +1,16 @@
+{
+  "name": "week10-workout",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Concert Ticketing backend and Docker starter",
+  "main": "server/app.js",
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "node --watch server/app.js"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "express": "^5.1.0"
+  }
+}
